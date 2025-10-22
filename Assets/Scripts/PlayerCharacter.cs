@@ -48,6 +48,7 @@ public class PlayerCharacter : MonoBehaviour
 
     [Header("Gameplay")]
     [SerializeField] private MovementValues _groundPhysic = new MovementValues();
+    [SerializeField] private MovementValues _sprintPhisic = new MovementValues();
     [SerializeField] private MovementValues _airPhysic = new MovementValues();
     [SerializeField] private GravityValues _gravityParameters = new GravityValues();
     [SerializeField] private JumpValues _jumpParameters = new JumpValues();
@@ -70,9 +71,11 @@ public class PlayerCharacter : MonoBehaviour
 
     //Gravity
     private float _currentGravity = 0.0f;
+    [SerializeField] private int _gravityDirection = 1;
 
     //Ground
     private bool _isGrounded = true;
+    bool _IsSprinting = false;
 
     //Air
     private float _airTime = 0.0f;
@@ -134,6 +137,7 @@ public class PlayerCharacter : MonoBehaviour
         Gravity();
         JumpForce();
 
+        //_forceToAdd.y *= _gravityDirection;
         //On ajoute la force au rigidbody
         _rigidbody.velocity += _forceToAdd;
     }
@@ -177,7 +181,12 @@ public class PlayerCharacter : MonoBehaviour
     {
         //On change la physique en fonction de si le joueur est au sol ou non
         if (groundState == PhysicState.Ground)
-            _horizontalPhysic = _groundPhysic;
+        {
+            if (_IsSprinting)
+                _horizontalPhysic = _sprintPhisic;
+            else
+                _horizontalPhysic = _groundPhysic;
+        }
         else if (groundState == PhysicState.Air)
             _horizontalPhysic = _airPhysic;
     }
@@ -320,7 +329,34 @@ public class PlayerCharacter : MonoBehaviour
 
     public void ActionOne()
     {
+        Sprint();
+    }
 
+    private void Sprint()
+    {
+        if (!_IsSprinting)
+        {
+            _horizontalPhysic = _sprintPhisic;
+            _IsSprinting = true;
+        }
+        else
+        {
+            _horizontalPhysic = _groundPhysic;
+            _IsSprinting = false;
+        }
+    }
+
+    public void StartInverseGravity()
+    {
+        _gravityDirection *= -1;
+
+        Debug.Log("Gravity Inversed: " + _gravityDirection);
+        //OnPhysicStateChanged.Invoke(PhysicState.Air);
+    }
+
+    public void InverseGravity()
+    {
+        
     }
 
     public void ActionTwo()
