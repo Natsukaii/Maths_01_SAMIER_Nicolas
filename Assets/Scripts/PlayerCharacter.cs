@@ -53,6 +53,7 @@ public class PlayerCharacter : MonoBehaviour
     [SerializeField] private GravityValues _gravityParameters = new GravityValues();
     [SerializeField] private JumpValues _jumpParameters = new JumpValues();
     [SerializeField] private ContactFilter2D _groundContactFilter = new ContactFilter2D();
+    [SerializeField] private ContactFilter2D _groundContactFilterInverse = new ContactFilter2D();
 
     [Header("Setup")]
     [SerializeField] private Transform _mesh = null;
@@ -71,7 +72,8 @@ public class PlayerCharacter : MonoBehaviour
 
     //Gravity
     private float _currentGravity = 0.0f;
-    [SerializeField] private int _gravityDirection = 1;
+    private bool _isGravityInversed = false;
+    private int _gravityDirection = 1;
 
     //Ground
     private bool _isGrounded = true;
@@ -145,7 +147,11 @@ public class PlayerCharacter : MonoBehaviour
     private void GroundDetection()
     {
         //On utilise le filtre qui contient l'inclinaison du sol pour savoir si le rigidbody touche le sol ou non
-        bool isTouchingGround = _rigidbody.IsTouching(_groundContactFilter);
+        bool isTouchingGround = false;
+        if (!_isGravityInversed)
+            isTouchingGround = _rigidbody.IsTouching(_groundContactFilter);
+        if (_isGravityInversed)
+            isTouchingGround = _rigidbody.IsTouching(_groundContactFilterInverse);
 
         //Si le rigidbody touche le sol mais on a en mémoire qu'il ne le touche pas, on est sur la frame où il touche le sol
         if (isTouchingGround && !_isGrounded)
@@ -189,6 +195,8 @@ public class PlayerCharacter : MonoBehaviour
         }
         else if (groundState == PhysicState.Air)
             _horizontalPhysic = _airPhysic;
+
+        Debug.Log("Physic changed to: " + groundState.ToString());
     }
 
     private void Movement()
@@ -240,12 +248,12 @@ public class PlayerCharacter : MonoBehaviour
 
         float coyoteTimeRatio = Mathf.Clamp01(_airTime / _gravityParameters.CoyoteTime);
         float coyoteTimeFactor = _isInCoyoteTime ? _gravityParameters.GravityRemapFromCoyoteTime.Evaluate(coyoteTimeRatio) : 1.0f;
-        float acceleration = _gravityParameters.Acceleration * coyoteTimeFactor * Time.fixedDeltaTime;
+        float acceleration = _gravityParameters.Acceleration * _gravityDirection * coyoteTimeFactor * Time.fixedDeltaTime;
 
-        _currentGravity = Mathf.MoveTowards(_currentGravity, _gravityParameters.MaxForce, acceleration);
+        _currentGravity = Mathf.MoveTowards(_currentGravity, _gravityParameters.MaxForce * _gravityDirection, acceleration);
 
         float velocityDelta = _currentGravity - _rigidbody.velocity.y;
-        velocityDelta = Mathf.Clamp(velocityDelta, -_gravityParameters.MaxAcceleration, 0.0f);
+        velocityDelta = Mathf.Clamp(velocityDelta, -_gravityParameters.MaxAcceleration * _gravityDirection, 0.0f);
 
         _forceToAdd.y += velocityDelta;
     }
@@ -274,7 +282,7 @@ public class PlayerCharacter : MonoBehaviour
             return;
         }
 
-        _currentJumpForce = _jumpParameters.ImpulseForce;
+        _currentJumpForce = _jumpParameters.ImpulseForce * _gravityDirection;
         _rigidbody.velocity = new Vector2(_rigidbody.velocity.x, _currentJumpForce);
         _isJumping = true;
         _isInCoyoteTime = false;
@@ -292,7 +300,7 @@ public class PlayerCharacter : MonoBehaviour
             return;
 
         float jumpTimeRatio = Mathf.Clamp01((_airTime - _startJumpTime) / _jumpTime);
-        float deceleration = _jumpParameters.Deceleration * _jumpParameters.DecelerationFromAirTime.Evaluate(jumpTimeRatio) * Time.fixedDeltaTime;
+        float deceleration = _jumpParameters.Deceleration * _gravityDirection * _jumpParameters.DecelerationFromAirTime.Evaluate(jumpTimeRatio) * Time.fixedDeltaTime;
 
         _currentJumpForce = Mathf.MoveTowards(_currentJumpForce, 0.0f, deceleration);
 
@@ -348,16 +356,16 @@ public class PlayerCharacter : MonoBehaviour
 
     public void StartInverseGravity()
     {
-        _gravityDirection *= -1;
+        _isGravityInversed = !_isGravityInversed;
+        if (_isGravityInversed)
+            _gravityDirection = -1;
+        else
+            _gravityDirection = 1;
 
-        Debug.Log("Gravity Inversed: " + _gravityDirection);
-        //OnPhysicStateChanged.Invoke(PhysicState.Air);
+        Debug.Log("Gravity Inversed: " + _isGravityInversed);
+        OnPhysicStateChanged.Invoke(PhysicState.Air);
     }
 
-    public void InverseGravity()
-    {
-        
-    }
 
     public void ActionTwo()
     {

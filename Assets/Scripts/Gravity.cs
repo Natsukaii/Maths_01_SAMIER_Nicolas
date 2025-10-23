@@ -8,8 +8,7 @@ public class Gravity : MonoBehaviour
     {
         if (other.GetComponent<PlayerCharacter>())
         {
-            other.GetComponent<PlayerCharacter>().StartJump();
-            other.GetComponent<PlayerCharacter>().InverseGravity();
+            other.GetComponent<PlayerCharacter>().StartInverseGravity();
         }
     }
 }
